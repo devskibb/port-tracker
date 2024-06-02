@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const axios = require('axios');
-const cors = require('cors'); // Import the cors package
+const cors = require('cors');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -36,104 +36,128 @@ const TOKEN_NAME_MAP = {
 app.use(cors());
 
 async function fetchEthTokenBalances(wallet) {
-  const response = await axios.get(`https://api.covalenthq.com/v1/1/address/${wallet}/balances_v2/`, {
-    params: {
-      key: COVALENT_API_KEY
-    }
-  });
-  return response.data.data.items;
+  try {
+    const response = await axios.get(`https://api.covalenthq.com/v1/1/address/${wallet}/balances_v2/`, {
+      params: {
+        key: COVALENT_API_KEY
+      }
+    });
+    return response.data.data.items;
+  } catch (error) {
+    console.error(`Error fetching ETH balances for wallet ${wallet}:`, error);
+    throw error;
+  }
 }
 
 async function fetchSolTokenBalances(wallet) {
-  const response = await axios.get(`https://api.covalenthq.com/v1/1399811149/address/${wallet}/balances_v2/`, {
-    params: {
-      key: COVALENT_API_KEY
-    }
-  });
-  return response.data.data.items;
+  try {
+    const response = await axios.get(`https://api.covalenthq.com/v1/1399811149/address/${wallet}/balances_v2/`, {
+      params: {
+        key: COVALENT_API_KEY
+      }
+    });
+    return response.data.data.items;
+  } catch (error) {
+    console.error(`Error fetching SOL balances for wallet ${wallet}:`, error);
+    throw error;
+  }
 }
 
 async function fetchCryptoPrice(cryptoIds) {
-  const response = await axios.get(`${COINGECKO_API_URL}/simple/price`, {
-    params: {
-      ids: cryptoIds.join(','),
-      vs_currencies: 'usd'
-    }
-  });
-  return response.data;
+  try {
+    const response = await axios.get(`${COINGECKO_API_URL}/simple/price`, {
+      params: {
+        ids: cryptoIds.join(','),
+        vs_currencies: 'usd'
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching crypto prices:', error);
+    throw error;
+  }
 }
 
 async function calculatePortfolioValue() {
-  let totalValue = 0;
+  try {
+    let totalValue = 0;
 
-  // Fetch token balances
-  const ethTokenBalances = (await Promise.all(ETH_WALLETS.map(fetchEthTokenBalances))).flat();
-  const solTokenBalances = (await Promise.all(SOL_WALLETS.map(fetchSolTokenBalances))).flat();
+    // Fetch token balances
+    const ethTokenBalances = (await Promise.all(ETH_WALLETS.map(fetchEthTokenBalances))).flat();
+    const solTokenBalances = (await Promise.all(SOL_WALLETS.map(fetchSolTokenBalances))).flat();
 
-  // Combine all token balances
-  const allTokens = [...ethTokenBalances, ...solTokenBalances];
+    // Combine all token balances
+    const allTokens = [...ethTokenBalances, ...solTokenBalances];
 
-  // Get unique token ids
-  const uniqueTokenIds = [...new Set(allTokens.map(token => {
-    if (token.contract_name) {
-      return TOKEN_NAME_MAP[token.contract_name] || token.contract_name.toLowerCase();
-    }
-    return null;
-  }).filter(Boolean))];
+    // Get unique token ids
+    const uniqueTokenIds = [...new Set(allTokens.map(token => {
+      if (token.contract_name) {
+        return TOKEN_NAME_MAP[token.contract_name] || token.contract_name.toLowerCase();
+      }
+      return null;
+    }).filter(Boolean))];
 
-  // Add BTC to unique token ids
-  uniqueTokenIds.push('bitcoin');
+    // Add BTC to unique token ids
+    uniqueTokenIds.push('bitcoin');
 
-  // Fetch prices
-  const prices = await fetchCryptoPrice(uniqueTokenIds);
+    // Fetch prices
+    const prices = await fetchCryptoPrice(uniqueTokenIds);
 
-  // Calculate total value
-  allTokens.forEach(token => {
-    if (!token.contract_name) {
-      return;
-    }
+    // Calculate total value
+    allTokens.forEach(token => {
+      if (!token.contract_name) {
+        return;
+      }
 
-    const tokenName = TOKEN_NAME_MAP[token.contract_name] || token.contract_name.toLowerCase();
-    const price = prices[tokenName] ? prices[tokenName].usd : 0;
+      const tokenName = TOKEN_NAME_MAP[token.contract_name] || token.contract_name.toLowerCase();
+      const price = prices[tokenName] ? prices[tokenName].usd : 0;
 
-    // Skip tokens with zero price
-    if (price === 0) {
-      return;
-    }
+      // Skip tokens with zero price
+      if (price === 0) {
+        return;
+      }
 
-    const balance = token.balance / Math.pow(10, token.contract_decimals);
+      const balance = token.balance / Math.pow(10, token.contract_decimals);
 
-    // Log and handle large balance values
-    if (balance > 1e10) {
-      return;
-    }
+      // Log and handle large balance values
+      if (balance > 1e10) {
+        return;
+      }
 
-    totalValue += balance * price;
-  });
+      totalValue += balance * price;
+    });
 
-  // Add BTC value
-  const btcPrice = prices.bitcoin ? prices.bitcoin.usd : 0;
-  const btcValue = FIXED_BTC_BALANCE * btcPrice;
-  totalValue += btcValue;
+    // Add BTC value
+    const btcPrice = prices.bitcoin ? prices.bitcoin.usd : 0;
+    const btcValue = FIXED_BTC_BALANCE * btcPrice;
+    totalValue += btcValue;
 
-  return totalValue;
+    return totalValue;
+  } catch (error) {
+    console.error('Error calculating portfolio value:', error);
+    throw error;
+  }
 }
 
 let values = [];
 let timestamps = [];
 
 async function updatePortfolioValue() {
-  const portfolioValue = await calculatePortfolioValue();
-  const now = new Date();
-  values.push(portfolioValue);
-  timestamps.push(now.toISOString().substring(11, 19)); // Only keep HH:MM:SS
+  try {
+    const portfolioValue = await calculatePortfolioValue();
+    const now = new Date();
+    values.push(portfolioValue);
+    timestamps.push(now.toISOString().substring(11, 19)); // Only keep HH:MM:SS
 
-  if (values.length > 20) {
-    values.shift();
-    timestamps.shift();
+    if (values.length > 20) {
+      values.shift();
+      timestamps.shift();
+    }
+
+    console.log('Updated portfolio values:', values);
+  } catch (error) {
+    console.error('Error updating portfolio value:', error);
   }
-
-  console.log('Updated portfolio values:', values);
 }
 
 app.get('/api/portfolio-value', async (req, res) => {
