@@ -1,4 +1,6 @@
-export default (req, res) => {
+import axios from 'axios';
+
+export default async (req, res) => {
   const covalentApiKey = process.env.COVALENT_API_KEY;
   const coingeckoApiUrl = process.env.COINGECKO_API_URL;
 
@@ -7,5 +9,12 @@ export default (req, res) => {
     return;
   }
 
-  res.status(200).json({ message: 'Environment variables are set correctly.' });
+  try {
+    const response = await axios.get(`${coingeckoApiUrl}/simple/price`, {
+      params: { ids: 'bitcoin', vs_currencies: 'usd' }
+    });
+    res.status(200).json({ price: response.data });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch data from CoinGecko.' });
+  }
 };
