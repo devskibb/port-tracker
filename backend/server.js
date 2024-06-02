@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const axios = require('axios');
+const cors = require('cors'); // Import the cors package
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -30,6 +31,9 @@ const TOKEN_NAME_MAP = {
   'Wrapped TAO': 'wrapped-tao',
   'enqAI': 'enqai',
 };
+
+// Enable CORS for all routes
+app.use(cors());
 
 async function fetchEthTokenBalances(wallet) {
   const response = await axios.get(`https://api.covalenthq.com/v1/1/address/${wallet}/balances_v2/`, {
