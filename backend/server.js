@@ -1,12 +1,11 @@
 require('dotenv').config();
 const express = require('express');
 const axios = require('axios');
-const cors = require('cors'); // Import the cors package
+const cors = require('cors');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Ensure environment variables are set
 if (!process.env.COVALENT_API_KEY || !process.env.COINGECKO_API_URL) {
   console.error('Environment variables are not set correctly.');
   process.exit(1);
@@ -30,16 +29,14 @@ const TOKEN_NAME_MAP = {
   'enqAI': 'enqai',
 };
 
-// Enable CORS for all routes
 app.use(cors());
 
 async function fetchEthTokenBalances(wallet) {
   try {
     const response = await axios.get(`https://api.covalenthq.com/v1/1/address/${wallet}/balances_v2/`, {
-      params: {
-        key: process.env.COVALENT_API_KEY
-      }
+      params: { key: process.env.COVALENT_API_KEY }
     });
+    console.log(`Fetched ETH balances for ${wallet}:`, response.data.data.items);
     return response.data.data.items;
   } catch (error) {
     console.error(`Error fetching ETH balances for wallet ${wallet}:`, error.response ? error.response.data : error.message);
@@ -50,10 +47,9 @@ async function fetchEthTokenBalances(wallet) {
 async function fetchSolTokenBalances(wallet) {
   try {
     const response = await axios.get(`https://api.covalenthq.com/v1/1399811149/address/${wallet}/balances_v2/`, {
-      params: {
-        key: process.env.COVALENT_API_KEY
-      }
+      params: { key: process.env.COVALENT_API_KEY }
     });
+    console.log(`Fetched SOL balances for ${wallet}:`, response.data.data.items);
     return response.data.data.items;
   } catch (error) {
     console.error(`Error fetching SOL balances for wallet ${wallet}:`, error.response ? error.response.data : error.message);
@@ -64,11 +60,9 @@ async function fetchSolTokenBalances(wallet) {
 async function fetchCryptoPrice(cryptoIds) {
   try {
     const response = await axios.get(`${process.env.COINGECKO_API_URL}/simple/price`, {
-      params: {
-        ids: cryptoIds.join(','),
-        vs_currencies: 'usd'
-      }
+      params: { ids: cryptoIds.join(','), vs_currencies: 'usd' }
     });
+    console.log('Fetched crypto prices:', response.data);
     return response.data;
   } catch (error) {
     console.error('Error fetching crypto prices:', error.response ? error.response.data : error.message);
@@ -121,13 +115,13 @@ async function calculatePortfolioValue() {
     const btcValue = FIXED_BTC_BALANCE * btcPrice;
     totalValue += btcValue;
 
+    console.log('Calculated portfolio value:', totalValue);
     return totalValue;
   } catch (error) {
     console.error('Error calculating portfolio value:', error);
     throw error;
   }
 }
-
 
 let values = [];
 let timestamps = [];
