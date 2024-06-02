@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portfolio Value Chart</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+  <style>
+    body {
+      background-color: #001f3f; /* Dark blue background for the whole page */
+    }
+    canvas {
+      background-color: #001f3f; /* Dark blue background for the chart */
+    }
+    #chart-container {
+      width: 80%;
+      height: 500px; /* Adjust this height as needed */
+      margin: auto;
+    }
+  </style>
+</head>
+<body>
+  <div id="chart-container">
+    <canvas id="portfolioChart"></canvas>
+  </div>
+  <script>
+    const ctx = document.getElementById('portfolioChart').getContext('2d');
+    const portfolioChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [{
+          label: 'Portfolio Value (USD)',
+          data: [],
+          borderColor: 'rgba(0, 255, 0, 1)', // Green line color
+          borderWidth: 3, // Thicker line
+          fill: false
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            type: 'time',
+            time: {
+              unit: 'minute',
+              tooltipFormat: 'HH:mm:ss',
+              displayFormats: {
+                minute: 'HH:mm:ss' // Adjusted to show seconds
+              },
+              ticks: {
+                color: 'white', // White text for x-axis labels
+                autoSkip: true, // Automatically skip labels to fit the chart
+                maxRotation: 0, // Prevent label rotation
+                minRotation: 0 // Prevent label rotation
+              }
+            },
+            y: {
+              beginAtZero: false,
+              ticks: {
+                color: 'white' // White text for y-axis labels
+              }
+            }
+          }
+        },
+        plugins: {
+          legend: {
+            labels: {
+              color: 'white' // White text for legend
+            }
+          }
+        }
+      }
+    });
+
+    const fullHistory = {
+      labels: [],
+      values: []
+    };
+
+    async function fetchData() {
+      try {
+        const response = await fetch('https://port-tracker-six.vercel.app/api/portfolio-value');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        console.log('Fetched data:', data); // Log fetched data
+
+        // Ensure the timestamps are properly parsed
+        const parsedTimestamps = data.timestamps.map(ts => new Date(`1970-01-01T${ts}Z`));
+
+        // Append new data to the full history
+        parsedTimestamps.forEach((timestamp, index) => {
+          fullHistory.labels.push(timestamp);
+          fullHistory.values.push(data.values[index]);
+        });
+
+        // Sort the full history by timestamp
+        const sortedHistory = fullHistory.labels.map((label, index) => ({
+          label,
+          value: fullHistory.values[index]
+        })).sort((a, b) => a.label - b.label);
+
+        fullHistory.labels = sortedHistory.map(item => item.label);
+        fullHistory.values = sortedHistory.map(item => item.value);
+
+        // Update chart data
+        portfolioChart.data.labels = fullHistory.labels;
+        portfolioChart.data.datasets[0].data = fullHistory.values;
+
+        portfolioChart.update();
+        console.log('Updated chart with data:', {
+          labels: fullHistory.labels,
+          values: fullHistory.values
+        }); // Log updated chart data
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    }
+
+    setInterval(fetchData, 180000); // Fetch data every 3 minutes
+    fetchData(); // Initial fetch
+  </script>
+</body>
+</html>
