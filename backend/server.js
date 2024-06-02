@@ -128,6 +128,7 @@ async function calculatePortfolioValue() {
   }
 }
 
+
 let values = [];
 let timestamps = [];
 
