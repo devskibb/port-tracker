@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const axios = require('axios');
-const cors = require('cors');
+const cors = require('cors'); // Import the cors package
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -44,7 +44,7 @@ async function fetchEthTokenBalances(wallet) {
     });
     return response.data.data.items;
   } catch (error) {
-    console.error(`Error fetching ETH balances for wallet ${wallet}:`, error);
+    console.error(`Error fetching ETH balances for wallet ${wallet}:`, error.response ? error.response.data : error.message);
     throw error;
   }
 }
@@ -58,7 +58,7 @@ async function fetchSolTokenBalances(wallet) {
     });
     return response.data.data.items;
   } catch (error) {
-    console.error(`Error fetching SOL balances for wallet ${wallet}:`, error);
+    console.error(`Error fetching SOL balances for wallet ${wallet}:`, error.response ? error.response.data : error.message);
     throw error;
   }
 }
@@ -73,7 +73,7 @@ async function fetchCryptoPrice(cryptoIds) {
     });
     return response.data;
   } catch (error) {
-    console.error('Error fetching crypto prices:', error);
+    console.error('Error fetching crypto prices:', error.response ? error.response.data : error.message);
     throw error;
   }
 }
